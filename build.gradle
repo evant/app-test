@@ -1,0 +1,22 @@
+group 'com.willowtreeapps'
+version '1.0-SNAPSHOT'
+
+buildscript {
+    ext.kotlin_version = '1.2.0'
+    repositories {
+        google()
+        jcenter()
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.3'
+        classpath 'com.android.tools.build:gradle:3.0.0'
+    }
+}
+
+subprojects {
+    repositories {
+        google()
+        jcenter()
+    }
+}

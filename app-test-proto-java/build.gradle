@@ -1,0 +1,48 @@
+apply plugin: 'java'
+apply plugin: 'com.google.protobuf'
+
+dependencies {
+    compile 'com.google.protobuf:protobuf-lite:3.0.0'
+    compile 'io.grpc:grpc-protobuf-lite:1.8.0'
+    compile 'io.grpc:grpc-stub:1.8.0'
+}
+
+sourceSets {
+    main.proto.srcDir '../proto'
+}
+
+protobuf {
+    protoc {
+        artifact = 'com.google.protobuf:protoc:3.5.0'
+    }
+    plugins {
+        javalite {
+            artifact = "com.google.protobuf:protoc-gen-javalite:3.0.0"
+        }
+        grpc {
+            artifact = 'io.grpc:protoc-gen-grpc-java:1.8.0'
+        }
+    }
+    generateProtoTasks {
+        all().each { task ->
+            task.builtins {
+                remove java
+            }
+            task.plugins {
+                javalite {}
+                grpc {
+                    option 'lite'
+                }
+            }
+        }
+    }
+}
+
+apply plugin: 'idea'
+
+idea {
+    module {
+        sourceDirs += file("${protobuf.generatedFilesBaseDir}/main/javalite")
+        sourceDirs += file("${protobuf.generatedFilesBaseDir}/main/grpc")
+    }
+}

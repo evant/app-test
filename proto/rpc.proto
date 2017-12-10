@@ -1,0 +1,82 @@
+syntax = "proto3";
+option java_package = "com.willowtreeapps.apptest.proto";
+
+service Service {
+    rpc Find (FindRequest) returns (Element) {}
+
+    rpc Click (ClickRequest) returns (ClickResponse) {}
+
+    rpc Text (TextRequest) returns (TextResponse) {}
+
+    rpc Button (ButtonRequest) returns (ButtonResponse) {}
+
+    rpc Screen (ScreenRequest) returns (ScreenInfo) {}
+}
+
+message Client {
+    string name = 1;
+}
+
+message FindRequest {
+    string path = 1;
+}
+
+message Element {
+    oneof state {
+        string error = 1;
+        Attributes attrs = 2;
+    }
+}
+
+message Attributes {
+    string text = 1;
+    uint32 count = 2;
+}
+
+message ClickRequest {
+    string path = 1;
+}
+
+message ClickResponse {
+    string error = 1;
+}
+
+message TextRequest {
+    string path = 1;
+    string text = 2;
+    enum Mode {
+        REPLACE = 0;
+        APPEND = 1;
+    }
+    Mode mode = 3;
+}
+
+message TextResponse {
+    string error = 1;
+}
+
+message ButtonRequest {
+    enum Button {
+        BACK = 0;
+    }
+    Button button = 1;
+}
+
+message ButtonResponse {
+    string error = 1;
+}
+
+message ScreenRequest {
+}
+
+message ScreenInfo {
+    uint32 widthPixels = 1;
+    uint32 heightPixels = 2;
+    uint32 widthPoints = 3;
+    uint32 heightPoints = 4;
+    enum DeviceClass {
+        HANDSET = 0;
+        TABLET = 1;
+    }
+    DeviceClass deviceClass = 5;
+}

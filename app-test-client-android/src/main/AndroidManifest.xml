@@ -1,0 +1,11 @@
+<manifest package="com.willowtreeapps.apptest.client.android"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application>
+        <service
+            android:name="com.willowtreeapps.apptest.android.AppTestServerService"
+            android:exported="true"/>
+    </application>
+</manifest>
