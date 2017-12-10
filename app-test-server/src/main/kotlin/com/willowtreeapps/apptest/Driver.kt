@@ -13,6 +13,19 @@ import io.grpc.stub.StreamObserver
 class Driver private constructor(private val channel: ManagedChannel, val appController: AppController) {
     private val stub = ServiceGrpc.newBlockingStub(channel)
 
+    val platform: Platform
+        get() = Platform.ANDROID //TODO
+
+    val formFactor: FormFactor
+        get() {
+            val screen = stub.screen(Rpc.ScreenRequest.getDefaultInstance())
+            return when (screen.deviceClass) {
+                Rpc.ScreenInfo.DeviceClass.HANDSET -> FormFactor.HANDSET
+                Rpc.ScreenInfo.DeviceClass.TABLET -> FormFactor.TABLET
+                else -> FormFactor.NONE
+            }
+        }
+
     fun shutdown() {
         channel.shutdown()
     }
@@ -25,11 +38,6 @@ class Driver private constructor(private val channel: ManagedChannel, val appCon
         stub.button(Rpc.ButtonRequest.newBuilder()
                 .setButton(Rpc.ButtonRequest.Button.BACK)
                 .build())
-    }
-
-    fun isTablet(): Boolean {
-        val screen = stub.screen(Rpc.ScreenRequest.getDefaultInstance())
-        return screen.deviceClass == Rpc.ScreenInfo.DeviceClass.TABLET
     }
 
     companion object {

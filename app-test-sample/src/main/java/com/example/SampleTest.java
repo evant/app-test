@@ -1,42 +1,25 @@
 package com.example;
 
-import com.willowtreeapps.apptest.Config;
 import com.willowtreeapps.apptest.Driver;
 import com.willowtreeapps.apptest.Element;
+import com.willowtreeapps.apptest.FormFactor;
+import com.willowtreeapps.apptest.Platform;
 
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
 import static org.junit.Assert.assertEquals;
 
+@RunWith(AppTestRunner.class)
 public class SampleTest {
-    static Driver driver;
+    private final Driver driver;
 
-    @BeforeClass
-    public static void setupAll() {
-        driver = Driver.start("localhost", Config.fromResource("/apptest.properties"));
-        driver.getAppController().setup();
-    }
-
-    @Before
-    public void setup() {
-        driver.getAppController().startApp();
-    }
-
-    @After
-    public void teardown() {
-        driver.getAppController().stopApp();
-    }
-
-    @AfterClass
-    public static void teardownAll() {
-        driver.getAppController().shutdown();
+    public SampleTest(Driver driver) {
+        this.driver = driver;
     }
 
     @Test
+    @RunOn(platform = Platform.ANDROID)
     public void hasHelloWorld() {
         Element hello = driver.find("content").find("hello_world");
 
