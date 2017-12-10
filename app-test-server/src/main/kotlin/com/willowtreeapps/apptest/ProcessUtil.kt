@@ -12,4 +12,4 @@ internal fun exec(vararg cmd: String): ProcessResult {
     return ProcessResult(code, stdout, stderr)
 }
 
-internal data class ProcessResult(val code: Int, val stdout: String, val stderr: String)
+data class ProcessResult(val code: Int, val stdout: String, val stderr: String)

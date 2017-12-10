@@ -10,7 +10,9 @@ import io.grpc.inprocess.InProcessServerBuilder
 import io.grpc.netty.NettyChannelBuilder
 import io.grpc.stub.StreamObserver
 
-class Driver private constructor(private val channel: ManagedChannel, val appController: AppController) {
+class Driver private constructor(val config: Config,
+                                 val appController: AppController,
+                                 private val channel: ManagedChannel) {
     private val stub = ServiceGrpc.newBlockingStub(channel)
 
     val platform: Platform
@@ -49,17 +51,23 @@ class Driver private constructor(private val channel: ManagedChannel, val appCon
         @JvmStatic
         @JvmOverloads
         fun start(host: String, config: Config, port: Int = 2734): Driver {
-            return Driver(NettyChannelBuilder.forAddress(host, port)
-                    .usePlaintext(true)
-                    .build(), AndroidAppController(config))
+            return Driver(config,
+                    AndroidAppController(config),
+                    NettyChannelBuilder.forAddress(host, port)
+                            .usePlaintext(true)
+                            .maxHeaderListSize(Int.MAX_VALUE)
+                            .maxInboundMessageSize(Int.MAX_VALUE)
+                            .build())
         }
 
         @JvmStatic
         fun mock(client: MockClient): Driver {
             currentClient = client
             if (mockDriver == null) {
-                mockDriver = Driver(InProcessChannelBuilder.forName("mock-driver")
-                        .build(), MockAppController())
+                mockDriver = Driver(Config(),
+                        MockAppController(),
+                        InProcessChannelBuilder.forName("mock-driver")
+                                .build())
             }
             connectMockClient()
             return mockDriver!!

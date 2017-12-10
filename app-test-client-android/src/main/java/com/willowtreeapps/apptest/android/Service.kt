@@ -14,40 +14,36 @@ import android.widget.TextView
 import com.willowtreeapps.apptest.client.android.R
 import com.willowtreeapps.apptest.proto.Rpc
 import com.willowtreeapps.apptest.proto.ServiceGrpc
+import io.grpc.Metadata
+import io.grpc.Status
+import io.grpc.StatusException
 import io.grpc.stub.StreamObserver
+import org.hamcrest.BaseMatcher
+import org.hamcrest.Description
 import org.hamcrest.Matcher
 import org.hamcrest.Matchers
+import org.hamcrest.SelfDescribing
 import kotlin.math.roundToInt
 
 class Service : ServiceGrpc.ServiceImplBase() {
 
     override fun find(find: Rpc.FindRequest, responseObserver: StreamObserver<Rpc.Element>) {
         val attributes = AttributeRecordAssertion()
-        try {
+        catchExpected(responseObserver) {
             Espresso.onView(ViewMatchers.isRoot()).perform(buildAction(find.path, attributes))
-            responseObserver.onNext(attributes.toElement())
-        } catch (e: NoMatchingViewException) {
-            responseObserver.onNext(Rpc.Element.newBuilder()
-                    .setError(e.message)
-                    .build())
+            attributes.toElement()
         }
-        responseObserver.onCompleted()
     }
 
     override fun click(click: Rpc.ClickRequest, responseObserver: StreamObserver<Rpc.ClickResponse>) {
-        try {
+        catchExpected(responseObserver) {
             Espresso.onView(ViewMatchers.isRoot()).perform(buildAction(click.path, ViewActions.click()))
-            responseObserver.onNext(Rpc.ClickResponse.getDefaultInstance())
-        } catch (e: NoMatchingViewException) {
-            responseObserver.onNext(Rpc.ClickResponse.newBuilder()
-                    .setError(e.message)
-                    .build())
+            Rpc.ClickResponse.getDefaultInstance()
         }
-        responseObserver.onCompleted()
     }
 
     override fun text(text: Rpc.TextRequest, responseObserver: StreamObserver<Rpc.TextResponse>) {
-        try {
+        catchExpected(responseObserver) {
             val action = when (text.mode) {
                 Rpc.TextRequest.Mode.REPLACE ->
                     ViewActions.replaceText(text.text)
@@ -58,25 +54,15 @@ class Service : ServiceGrpc.ServiceImplBase() {
                 }
             }
             Espresso.onView(ViewMatchers.isRoot()).perform(buildAction(text.path, action))
-            responseObserver.onNext(Rpc.TextResponse.getDefaultInstance())
-        } catch (e: Throwable) {
-            responseObserver.onNext(Rpc.TextResponse.newBuilder()
-                    .setError(e.message)
-                    .build())
+            Rpc.TextResponse.getDefaultInstance()
         }
-        responseObserver.onCompleted()
     }
 
     override fun button(request: Rpc.ButtonRequest, responseObserver: StreamObserver<Rpc.ButtonResponse>) {
-        try {
+        catchExpected(responseObserver) {
             Espresso.pressBack()
-            responseObserver.onNext(Rpc.ButtonResponse.getDefaultInstance())
-        } catch (e: PerformException) {
-            responseObserver.onNext(Rpc.ButtonResponse.newBuilder()
-                    .setError(e.message)
-                    .build())
+            Rpc.ButtonResponse.getDefaultInstance()
         }
-        responseObserver.onCompleted()
     }
 
     override fun screen(request: Rpc.ScreenRequest, responseObserver: StreamObserver<Rpc.ScreenInfo>) {
@@ -96,20 +82,36 @@ class Service : ServiceGrpc.ServiceImplBase() {
         responseObserver.onCompleted()
     }
 
+    private inline fun <V> catchExpected(observer: StreamObserver<V>, f: () -> V) {
+        try {
+            observer.onNext(f())
+            observer.onCompleted()
+        } catch (e: NoMatchingViewException) {
+            observer.onError(noMatchingViewStatus(e))
+        }
+    }
+
+    private fun noMatchingViewStatus(e: NoMatchingViewException): StatusException
+            = StatusException(Status.NOT_FOUND, Metadata().apply {
+                put(Metadata.Key.of("message-bin", Metadata.BINARY_BYTE_MARSHALLER), e.message?.toByteArray())
+            })
+
     private fun buildAction(path: String, viewAction: ViewAction): ViewAction {
         return path.split("/")
                 .reversed()
                 .fold(viewAction) { action, part ->
                     val index = part.toIntOrNull()
                     if (index != null) {
-                        EnsureChildIndexAction(part.toInt(), action)
+                        EnsureChildIndexAction(path, part.toInt(), action)
                     } else {
-                        EnsureChildIdAction(part, action)
+                        EnsureChildIdAction(path, part, action)
                     }
                 }
     }
 
-    private class EnsureChildIdAction(private val id: String, private val viewAction: ViewAction) : ViewAction {
+    private class EnsureChildIdAction(private val path: String,
+                                      private val id: String,
+                                      private val viewAction: ViewAction) : ViewAction {
         override fun getDescription(): String = ""
 
         override fun getConstraints(): Matcher<View> = isDisplayed()
@@ -123,12 +125,23 @@ class Service : ServiceGrpc.ServiceImplBase() {
                 }
             }
             throw NoMatchingViewException.Builder()
+                    .withViewMatcher(IdViewMatcher())
                     .withRootView(view)
                     .build()
         }
+
+        private inner class IdViewMatcher : BaseMatcher<View>() {
+            override fun matches(item: Any?): Boolean = true
+
+            override fun describeTo(description: Description) {
+                description.appendText("id $id in $path")
+            }
+        }
     }
 
-    private class EnsureChildIndexAction(private val index: Int, private val viewAction: ViewAction) : ViewAction {
+    private class EnsureChildIndexAction(private val path: String,
+                                         private val index: Int,
+                                         private val viewAction: ViewAction) : ViewAction {
         override fun getDescription(): String = ""
 
         override fun getConstraints(): Matcher<View> = isDisplayed()
@@ -138,8 +151,15 @@ class Service : ServiceGrpc.ServiceImplBase() {
             if (view is RecyclerView) {
                 view.scrollToPosition(index)
                 uiController.loopMainThreadUntilIdle()
-                val child = view.findViewHolderForAdapterPosition(index).itemView
-                viewAction.perform(uiController, child)
+                val child = view.findViewHolderForAdapterPosition(index)?.itemView
+                if (child != null) {
+                    viewAction.perform(uiController, child)
+                } else {
+                    throw NoMatchingViewException.Builder()
+                            .withViewMatcher(IndexViewMatcher())
+                            .withRootView(view)
+                            .build()
+                }
             } else if (view is ListView) {
                 view.setSelection(index)
                 uiController.loopMainThreadUntilIdle()
@@ -150,8 +170,17 @@ class Service : ServiceGrpc.ServiceImplBase() {
                 viewAction.perform(uiController, child)
             } else {
                 throw NoMatchingViewException.Builder()
+                        .withViewMatcher(IndexViewMatcher())
                         .withRootView(view)
                         .build()
+            }
+        }
+
+        private inner class IndexViewMatcher : BaseMatcher<View>() {
+            override fun matches(item: Any?): Boolean = true
+
+            override fun describeTo(description: Description) {
+                description.appendText("index $index in $path")
             }
         }
     }

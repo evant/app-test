@@ -2,6 +2,8 @@ package com.willowtreeapps.apptest
 
 import com.willowtreeapps.apptest.proto.Rpc
 import com.willowtreeapps.apptest.proto.ServiceGrpc
+import io.grpc.Metadata
+import io.grpc.StatusRuntimeException
 
 interface Element {
     val exists: Boolean
@@ -27,18 +29,20 @@ interface Element {
 
 internal class RemoteElement(private val stub: ServiceGrpc.ServiceBlockingStub, private val path: String): Element {
     private val backingElement
-        get() = stub.find(Rpc.FindRequest.newBuilder()
-                .setPath(path)
-                .build())
+        get() = check {
+            stub.find(Rpc.FindRequest.newBuilder()
+                    .setPath(path)
+                    .build())
+        }
 
     override val exists: Boolean
         get() = backingElement.error.isEmpty()
 
     override val text: String?
-        get() = backingElement.check().attrs.text
+        get() = backingElement.attrs.text
 
     override val count: Int
-        get() = backingElement.check().attrs.count
+        get() = backingElement.attrs.count
 
     override fun find(path: String): Element
             = RemoteElement(stub, "${this.path}/$path")
@@ -47,33 +51,41 @@ internal class RemoteElement(private val stub: ServiceGrpc.ServiceBlockingStub, 
             = RemoteElement(stub, "${this.path}/$child")
 
     override fun click() {
-        checkError(stub.click(Rpc.ClickRequest.newBuilder()
-                .setPath(path)
-                .build()).error)
+        check {
+            stub.click(Rpc.ClickRequest.newBuilder()
+                    .setPath(path)
+                    .build())
+        }
     }
 
     override fun typeText(text: String) {
-        checkError(stub.text(Rpc.TextRequest.newBuilder()
-                .setPath(path)
-                .setText(text)
-                .setMode(Rpc.TextRequest.Mode.APPEND)
-                .build()).error)
+        check {
+            stub.text(Rpc.TextRequest.newBuilder()
+                    .setPath(path)
+                    .setText(text)
+                    .setMode(Rpc.TextRequest.Mode.APPEND)
+                    .build())
+        }
     }
 
     override fun replaceText(text: String) {
-        checkError(stub.text(Rpc.TextRequest.newBuilder()
-                .setPath(path)
-                .setText(text)
-                .setMode(Rpc.TextRequest.Mode.REPLACE)
-                .build()).error)
+        check {
+            stub.text(Rpc.TextRequest.newBuilder()
+                    .setPath(path)
+                    .setText(text)
+                    .setMode(Rpc.TextRequest.Mode.REPLACE)
+                    .build())
+        }
     }
 
-    private fun Rpc.Element.check(): Rpc.Element
-            = apply { checkError(error) }
-
-    private fun checkError(error: String) {
-        if (error.isNotEmpty()) {
-            throw AssertionError(error)
+    private inline fun <T> check(f: () -> T): T {
+        try {
+            return f()
+        } catch (e: StatusRuntimeException) {
+            val message = e.trailers.get(Metadata.Key.of("message-bin", Metadata.BINARY_BYTE_MARSHALLER))?.let {
+                String(it, Charsets.UTF_8)
+            }
+            throw AssertionError(e.status.code.toString() + if (message != null) " " + message else "", e)
         }
     }
 }
