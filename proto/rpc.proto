@@ -22,13 +22,6 @@ message FindRequest {
 }
 
 message Element {
-    oneof state {
-        string error = 1;
-        Attributes attrs = 2;
-    }
-}
-
-message Attributes {
     string text = 1;
     uint32 count = 2;
 }
@@ -38,7 +31,6 @@ message ClickRequest {
 }
 
 message ClickResponse {
-    string error = 1;
 }
 
 message TextRequest {
@@ -52,7 +44,6 @@ message TextRequest {
 }
 
 message TextResponse {
-    string error = 1;
 }
 
 message ButtonRequest {
@@ -63,7 +54,6 @@ message ButtonRequest {
 }
 
 message ButtonResponse {
-    string error = 1;
 }
 
 message ScreenRequest {

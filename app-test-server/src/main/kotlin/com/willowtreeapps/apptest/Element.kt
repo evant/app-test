@@ -36,13 +36,18 @@ internal class RemoteElement(private val stub: ServiceGrpc.ServiceBlockingStub, 
         }
 
     override val exists: Boolean
-        get() = backingElement.error.isEmpty()
+        get() = try {
+            backingElement
+            true
+        } catch (e: Throwable) {
+            false
+        }
 
     override val text: String?
-        get() = backingElement.attrs.text
+        get() = backingElement.text
 
     override val count: Int
-        get() = backingElement.attrs.count
+        get() = backingElement.count
 
     override fun find(path: String): Element
             = RemoteElement(stub, "${this.path}/$path")

@@ -99,11 +99,10 @@ class Driver private constructor(val config: Config,
 
 private fun Element.toBackingElement(): Rpc.Element {
     val builder = Rpc.Element.newBuilder()
-    val attrs = Rpc.Attributes.newBuilder()
     if (text != null) {
-        attrs.text = text
+        builder.text = text
     }
-    builder.setAttrs(attrs)
+    builder.count = count
     return builder.build()
 }
 

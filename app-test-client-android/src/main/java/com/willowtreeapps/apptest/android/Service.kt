@@ -211,12 +211,10 @@ class Service : ServiceGrpc.ServiceImplBase() {
 
     private fun AttributeRecordAssertion.toElement(): Rpc.Element {
         val builder = Rpc.Element.newBuilder()
-        val attrs = Rpc.Attributes.newBuilder()
         if (text != null) {
-            attrs.text = text
+            builder.text = text
         }
-        attrs.count = count
-        builder.setAttrs(attrs)
+        builder.count = count
         return builder.build()
     }
 }
