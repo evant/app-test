@@ -5,6 +5,7 @@ import android.support.test.espresso.*
 import android.support.test.espresso.action.ViewActions
 import android.support.test.espresso.matcher.ViewMatchers
 import android.support.test.espresso.matcher.ViewMatchers.isDisplayed
+import android.support.test.espresso.matcher.ViewMatchers.withEffectiveVisibility
 import android.support.test.espresso.util.TreeIterables
 import android.support.v7.widget.RecyclerView
 import android.view.View
@@ -114,7 +115,7 @@ class Service : ServiceGrpc.ServiceImplBase() {
                                       private val viewAction: ViewAction) : ViewAction {
         override fun getDescription(): String = ""
 
-        override fun getConstraints(): Matcher<View> = isDisplayed()
+        override fun getConstraints(): Matcher<View> = withEffectiveVisibility(ViewMatchers.Visibility.VISIBLE)
 
         override fun perform(uiController: UiController, view: View) {
             uiController.loopMainThreadUntilIdle()
@@ -144,14 +145,13 @@ class Service : ServiceGrpc.ServiceImplBase() {
                                          private val viewAction: ViewAction) : ViewAction {
         override fun getDescription(): String = ""
 
-        override fun getConstraints(): Matcher<View> = isDisplayed()
+        override fun getConstraints(): Matcher<View> = withEffectiveVisibility(ViewMatchers.Visibility.VISIBLE)
 
         override fun perform(uiController: UiController, view: View) {
-            uiController.loopMainThreadUntilIdle()
             if (view is RecyclerView) {
                 view.scrollToPosition(index)
                 uiController.loopMainThreadUntilIdle()
-                val child = view.findViewHolderForAdapterPosition(index)?.itemView
+                val child = view.findViewHolderForLayoutPosition(index)?.itemView
                 if (child != null) {
                     viewAction.perform(uiController, child)
                 } else {
@@ -195,7 +195,6 @@ class Service : ServiceGrpc.ServiceImplBase() {
         override fun getConstraints(): Matcher<View> = Matchers.any(View::class.java)
 
         override fun perform(uiController: UiController, view: View) {
-            uiController.loopMainThreadUntilIdle()
             exists = true
             if (view is TextView) {
                 text = view.text.toString()
