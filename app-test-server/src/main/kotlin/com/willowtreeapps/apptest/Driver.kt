@@ -1,6 +1,7 @@
 package com.willowtreeapps.apptest
 
 import com.willowtreeapps.apptest.android.AndroidAppController
+import com.willowtreeapps.apptest.proto.LifecycleGrpc
 import com.willowtreeapps.apptest.proto.Rpc
 import com.willowtreeapps.apptest.proto.ServiceGrpc
 import io.grpc.ManagedChannel
@@ -11,9 +12,9 @@ import io.grpc.netty.NettyChannelBuilder
 import io.grpc.stub.StreamObserver
 
 class Driver private constructor(val config: Config,
-                                 val appController: AppController,
                                  private val channel: ManagedChannel) {
     private val stub = ServiceGrpc.newBlockingStub(channel)
+    val appController: AppController = AndroidAppController(config, LifecycleGrpc.newBlockingStub(channel))
 
     val platform: Platform
         get() = Platform.ANDROID //TODO
@@ -52,7 +53,6 @@ class Driver private constructor(val config: Config,
         @JvmOverloads
         fun start(host: String, config: Config, port: Int = 2734): Driver {
             return Driver(config,
-                    AndroidAppController(config),
                     NettyChannelBuilder.forAddress(host, port)
                             .usePlaintext(true)
                             .maxHeaderListSize(Int.MAX_VALUE)
@@ -65,7 +65,6 @@ class Driver private constructor(val config: Config,
             currentClient = client
             if (mockDriver == null) {
                 mockDriver = Driver(Config(),
-                        MockAppController(),
                         InProcessChannelBuilder.forName("mock-driver")
                                 .build())
             }

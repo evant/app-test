@@ -1,2 +1,2 @@
 rootProject.name = 'app-test'
-include ':app-test-server', ':app-test-client-android', ':app-test-proto-java', ':app-test-android-sample', ':app-test-sample'
+include ':app-test-server', ':app-test-client-android', ':app-test-proto-java', ':app-test-android-sample', ':app-test-sample', ':app-test-client-android-apk'

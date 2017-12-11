@@ -13,6 +13,16 @@ service Service {
     rpc Screen (ScreenRequest) returns (ScreenInfo) {}
 }
 
+service Lifecycle {
+    rpc Setup (SetupRequest) returns (SetupResponse) {}
+
+    rpc StartApp (StartRequest) returns (StartResponse) {}
+
+    rpc StopApp (StopRequest) returns (StopResponse) {}
+
+    rpc Shutdown (ShutodownRequest) returns (ShutdownResponse) {}
+}
+
 message Client {
     string name = 1;
 }
@@ -69,4 +79,28 @@ message ScreenInfo {
         TABLET = 1;
     }
     DeviceClass deviceClass = 5;
+}
+
+message SetupRequest {
+}
+
+message SetupResponse {
+}
+
+message StartRequest {
+}
+
+message StartResponse {
+}
+
+message StopRequest {
+}
+
+message StopResponse {
+}
+
+message ShutodownRequest {
+}
+
+message ShutdownResponse {
 }

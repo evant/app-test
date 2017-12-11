@@ -9,12 +9,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
-import com.squareup.rx2.idler.Rx2Idler
-import io.reactivex.Single
-import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.plugins.RxJavaPlugins
-import io.reactivex.schedulers.Schedulers
-import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
 
