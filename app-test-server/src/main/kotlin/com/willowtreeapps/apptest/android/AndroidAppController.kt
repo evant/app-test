@@ -5,52 +5,103 @@ import com.willowtreeapps.apptest.Config
 import com.willowtreeapps.apptest.exec
 import com.willowtreeapps.apptest.proto.LifecycleGrpc
 import com.willowtreeapps.apptest.proto.Rpc
+import io.reactivex.Single
+import io.reactivex.schedulers.Schedulers
 import java.io.File
-import java.nio.file.Files
+import java.util.concurrent.TimeUnit
+import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 
-private const val SERVICE_NAME = "com.willowtreeapps.apptest.android.AppTestServerService"
-
-class AndroidAppController(val config: Config,
-                           private val stub: LifecycleGrpc.LifecycleBlockingStub) : AppController {
+class AndroidAppController(
+    val config: Config,
+    private val stub: LifecycleGrpc.LifecycleBlockingStub
+) : AppController {
     private val adb = Adb(config)
 
     override fun setup() {
         if (config.androidAppId != null) {
-            //TODO: figure how to package up this apk
-            val testApkPath = "/Users/evantatarka/IdeaProjects/app-test/app-test-client-android-apk/build/outputs/apk/androidTest/debug/app-test-client-android-apk-debug-androidTest.apk"
-            val tmpDir = Files.createTempDirectory("app-test")
-            val tmpFile = File(tmpDir.toFile(), "app-test.apk")
-            val tmpOutDir = File(tmpDir.toFile(), "out")
-            val tmpOutFile = File(tmpDir.toFile(), "app-test-out.apk")
-            val tmpOutFileSigned = File(tmpDir.toFile(), "app-test-signed.apk")
-            File(testApkPath).copyTo(tmpFile, overwrite = true)
+            val cacheDir =
+                File(System.getProperty("user.home"), ".cache/app-test/${config.androidAppId}")
+            val testApkSigned = File(cacheDir, "app-test-signed.apk")
 
-            tmpFile.inputStream().buffered().let { ZipInputStream(it) }.use { zis ->
-                var zipEntry = zis.nextEntry
-                while (zipEntry != null) {
-                    val fileName = zipEntry.name
-                    val newFile = File(tmpOutDir, fileName)
-                    newFile.parentFile.mkdirs()
-                    newFile.outputStream().buffered().use { out ->
-                        zis.copyTo(out)
+            if (!testApkSigned.exists()) {
+                cacheDir.mkdirs()
+
+                val manifest = File(cacheDir, "AndroidManifest.xml")
+                val compiledManifest = File("${manifest.path}.apk")
+                val testApkIn = File(cacheDir, "app-test.apk")
+                val testApkOut = File(cacheDir, "app-test-out.apk")
+
+                copyResource("/AndroidManifest.xml", manifest)
+                copyResource("/app-test-client-android-apk-debug-androidTest.apk", testApkIn)
+
+                exec(
+                    aapt(),
+                    "package",
+                    "-M",
+                    manifest.path,
+                    "--rename-instrumentation-target-package",
+                    config.androidAppId,
+                    "-I",
+                    androidJar(),
+                    "-F",
+                    compiledManifest.path,
+                    "-f"
+                ).subscribe()
+
+                // replace manifest
+                compiledManifest.inputStream().let { ZipInputStream(it) }.use { manifest ->
+                    manifest.nextEntry
+                    testApkIn.inputStream().let { ZipInputStream(it) }.use { apkIn ->
+                        testApkOut.outputStream().let { ZipOutputStream(it) }.use { apkOut ->
+                            var entry = apkIn.nextEntry
+                            while (entry != null) {
+                                apkOut.putNextEntry(ZipEntry(entry.name))
+                                if (entry.name == "AndroidManifest.xml") {
+                                    manifest.copyTo(apkOut)
+                                } else {
+                                    apkIn.copyTo(apkOut)
+                                }
+                                entry = apkIn.nextEntry
+                            }
+                        }
                     }
-                    zipEntry = zis.nextEntry
                 }
-                zis.closeEntry()
-            }
-            exec(aapt(), "p", "--rename-instrumentation-target-package", config.androidAppId, "-F", tmpOutFile.path, tmpOutDir.path)
-            val debugKeystore = File(System.getProperty("user.home"), ".android/debug.keystore")
-            exec(apkSigner(), "sign", "--ks", debugKeystore.path, "--out", tmpOutFileSigned.path, "--ks-key-alias", "androiddebugkey", "--ks-pass", "pass:android", "--key-pass", "pass:android", tmpOutFile.path)
 
-            adb("install", "-r", tmpOutFileSigned.path)
+                val debugKeystore = File(System.getProperty("user.home"), ".android/debug.keystore")
+                exec(
+                    apkSigner(),
+                    "sign",
+                    "--ks",
+                    debugKeystore.path,
+                    "--out",
+                    testApkSigned.path,
+                    "--ks-key-alias",
+                    "androiddebugkey",
+                    "--ks-pass",
+                    "pass:android",
+                    "--key-pass",
+                    "pass:android",
+                    testApkOut.path
+                ).subscribe()
+            }
+
+            adb("install", "-r", testApkSigned.path).subscribe()
         }
 
         if (config.androidApk != null) {
-            adb("install", "-r", config.androidApk.path)
+            adb("install", "-r", config.androidApk.path).subscribe()
         }
 
+        adb("forward", "tcp:2734", "tcp:2734").subscribe()
+
         adb.shell("am instrument -w com.willowtreeapps.apptest.android.apk.test/com.willowtreeapps.apptest.android.AppTestRunner")
+            .subscribeOn(Schedulers.io())
+            .subscribe()
+
+        Single.timer(500, TimeUnit.MILLISECONDS).blockingGet()
+
         stub.setup(Rpc.SetupRequest.getDefaultInstance())
     }
 
@@ -70,7 +121,19 @@ class AndroidAppController(val config: Config,
         return File(config.androidSdkDir, "build-tools/25.0.0/aapt").path
     }
 
+    private fun androidJar(): String {
+        return File(config.androidSdkDir, "platforms/android-25/android.jar").path
+    }
+
     private fun apkSigner(): String {
         return File(config.androidSdkDir, "build-tools/25.0.0/apksigner").path
+    }
+
+    private fun copyResource(resource: String, dest: File) {
+        javaClass.getResourceAsStream(resource).buffered().use { input ->
+            dest.outputStream().buffered().use { output ->
+                input.copyTo(output)
+            }
+        }
     }
 }

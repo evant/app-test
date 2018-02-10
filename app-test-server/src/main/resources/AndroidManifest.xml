@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.willowtreeapps.apptest.android.apk.test" >
+
+    <uses-sdk
+        android:minSdkVersion="21"
+        android:targetSdkVersion="27" />
+
+    <instrumentation
+        android:name="com.willowtreeapps.apptest.android.AppTestRunner"
+        android:functionalTest="false"
+        android:handleProfiling="false"
+        android:label="Tests for com.willowtreeapps.apptest.android.apk"
+        android:targetPackage="com.willowtreeapps.apptest.android.apk" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application android:debuggable="true" >
+        <uses-library android:name="android.test.runner" />
+    </application>
+
+</manifest>

@@ -11,13 +11,14 @@ import android.support.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import android.support.test.runner.lifecycle.ApplicationLifecycleMonitorRegistry
 import android.support.test.runner.lifecycle.ApplicationStage
 import android.support.test.runner.lifecycle.Stage
+import com.willowtreeapps.apptest.android.idlers.Idlers
 import com.willowtreeapps.apptest.proto.LifecycleGrpc
 import com.willowtreeapps.apptest.proto.Rpc
 import io.grpc.Server
 import io.grpc.ServerBuilder
 import io.grpc.stub.StreamObserver
 
-class AppTestRunner: MonitoringInstrumentation() {
+class AppTestRunner : MonitoringInstrumentation() {
 
     private var server: Server? = null
 
@@ -39,10 +40,10 @@ class AppTestRunner: MonitoringInstrumentation() {
 
         val finderService = Service()
         server = ServerBuilder.forPort(2734)
-                .addService(finderService)
-                .addService(LifecycleService())
-                .build()
-                .start()
+            .addService(finderService)
+            .addService(LifecycleService())
+            .build()
+            .start()
     }
 
     override fun onDestroy() {
@@ -53,34 +54,50 @@ class AppTestRunner: MonitoringInstrumentation() {
     internal inner class LifecycleService : LifecycleGrpc.LifecycleImplBase() {
         private val finisher = ActivityFinisher()
 
-        override fun setup(request: Rpc.SetupRequest, responseObserver: StreamObserver<Rpc.SetupResponse>) {
+        override fun setup(
+            request: Rpc.SetupRequest,
+            responseObserver: StreamObserver<Rpc.SetupResponse>
+        ) {
+            Idlers.install()
             responseObserver.onNext(Rpc.SetupResponse.getDefaultInstance())
             responseObserver.onCompleted()
         }
 
-        override fun startApp(request: Rpc.StartRequest, responseObserver: StreamObserver<Rpc.StartResponse>) {
-            startActivitySync(targetContext.packageManager.getLaunchIntentForPackage(targetContext.packageName)
+        override fun startApp(
+            request: Rpc.StartRequest,
+            responseObserver: StreamObserver<Rpc.StartResponse>
+        ) {
+            startActivitySync(
+                targetContext.packageManager.getLaunchIntentForPackage(targetContext.packageName)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK))
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            )
             responseObserver.onNext(Rpc.StartResponse.getDefaultInstance())
             responseObserver.onCompleted()
         }
 
-        override fun stopApp(request: Rpc.StopRequest, responseObserver: StreamObserver<Rpc.StopResponse>) {
-            finisher.run()
+        override fun stopApp(
+            request: Rpc.StopRequest,
+            responseObserver: StreamObserver<Rpc.StopResponse>
+        ) {
+            runOnMainSync { finisher.run() }
             waitForActivitiesToComplete()
             responseObserver.onNext(Rpc.StopResponse.getDefaultInstance())
             responseObserver.onCompleted()
         }
 
-        override fun shutdown(request: Rpc.ShutodownRequest, responseObserver: StreamObserver<Rpc.ShutdownResponse>) {
+        override fun shutdown(
+            request: Rpc.ShutodownRequest,
+            responseObserver: StreamObserver<Rpc.ShutdownResponse>
+        ) {
             responseObserver.onNext(Rpc.ShutdownResponse.getDefaultInstance())
             responseObserver.onCompleted()
             finish(Activity.RESULT_OK, null)
         }
     }
 
-    private class ActivityLifecycleListener(private val impl: ActivityLifecycleMonitorImpl) : Application.ActivityLifecycleCallbacks {
+    private class ActivityLifecycleListener(private val impl: ActivityLifecycleMonitorImpl) :
+        Application.ActivityLifecycleCallbacks {
         override fun onActivityCreated(activity: Activity, bundle: Bundle?) {
             impl.signalLifecycleChange(Stage.CREATED, activity)
         }

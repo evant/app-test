@@ -8,6 +8,8 @@ import android.support.test.espresso.matcher.ViewMatchers.isDisplayed
 import android.support.test.espresso.matcher.ViewMatchers.withEffectiveVisibility
 import android.support.test.espresso.util.TreeIterables
 import android.support.v7.widget.RecyclerView
+import android.util.DisplayMetrics
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ListView
@@ -74,13 +76,18 @@ class Service : ServiceGrpc.ServiceImplBase() {
                 .setHeightPixels(m.heightPixels)
                 .setWidthPoints((m.widthPixels.toFloat() / m.density).roundToInt())
                 .setHeightPoints((m.heightPixels.toFloat() / m.density).roundToInt())
-                .setDeviceClass(if (res.getBoolean(R.bool.apptest_isTablet)) {
+                .setDeviceClass(if (m.isTablet()) {
                     Rpc.ScreenInfo.DeviceClass.TABLET
                 } else {
                     Rpc.ScreenInfo.DeviceClass.HANDSET
                 })
                 .build())
         responseObserver.onCompleted()
+    }
+
+    private fun DisplayMetrics.isTablet(): Boolean {
+        val smallestDp = (if (widthPixels < heightPixels) widthPixels else heightPixels) / density
+        return smallestDp >= 600
     }
 
     private inline fun <V> catchExpected(observer: StreamObserver<V>, f: () -> V) {

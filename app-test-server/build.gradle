@@ -5,10 +5,18 @@ dependencies {
     implementation project(':app-test-proto-java')
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     implementation 'io.grpc:grpc-netty:1.8.0'
-    implementation "io.reactivex.rxjava2:rxjava:2.1.5"
+    implementation "io.reactivex.rxjava2:rxjava:2.1.7"
 
     testImplementation 'junit:junit:4.12'
 }
+
+task copyApk(type: Copy, dependsOn: [':app-test-client-android-apk:assembleAndroidTest']) {
+    from file("${project(':app-test-client-android-apk').buildDir}/intermediates/manifest/androidTest/debug/AndroidManifest.xml")
+    from file("${project(':app-test-client-android-apk').buildDir}/outputs/apk/androidTest/debug/app-test-client-android-apk-debug-androidTest.apk")
+    into sourceSets.main.resources.srcDirs.first()
+}
+
+tasks.findByName('build').dependsOn(copyApk)
 
 compileKotlin {
     kotlinOptions.jvmTarget = "1.8"

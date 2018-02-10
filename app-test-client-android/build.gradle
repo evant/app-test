@@ -26,6 +26,17 @@ dependencies {
     implementation project(':app-test-proto-java')
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     implementation 'com.android.support.test.espresso:espresso-core:3.0.1'
-    implementation 'com.android.support:recyclerview-v7:25.4.0'
+    implementation 'com.android.support:recyclerview-v7:27.0.2'
     implementation 'io.grpc:grpc-netty:1.8.0'
+    implementation 'com.android.support:multidex:1.0.2'
+
+    implementation('com.squareup.rx.idler:rx1-idler:0.9.0') {
+        transitive = false
+    }
+    compileOnly 'io.reactivex:rxjava:1.3.0'
+
+    implementation('com.squareup.rx.idler:rx2-idler:0.9.0') {
+        transitive = false
+    }
+    compileOnly 'io.reactivex.rxjava2:rxjava:2.1.1'
 }
